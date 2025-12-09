@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор прибыли для двоих</title>
+<style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+    .container { background: #fff; padding: 20px; border-radius: 10px; max-width: 500px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);}
+    input { width: 100%; padding: 8px; margin: 5px 0 15px; border-radius: 5px; border: 1px solid #ccc;}
+    button { padding: 10px 15px; border: none; border-radius: 5px; background: #28a745; color: white; cursor: pointer; margin-top: 10px;}
+    button:hover { background: #218838; }
+    .result, .history { margin-top: 20px; font-weight: bold; }
+    h3 { margin-bottom: 5px; }
+    ul { padding-left: 20px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Калькулятор прибыли для двоих</h2>
+
+    <h3>Игрок 1</h3>
+    <label>Прибыль:</label>
+    <input type="number" id="profit1" placeholder="Введите прибыль">
+
+    <h3>Игрок 2</h3>
+    <label>Прибыль:</label>
+    <input type="number" id="profit2" placeholder="Введите прибыль">
+
+    <button onclick="saveProfit()">Сохранить и рассчитать</button>
+
+    <div class="result" id="result"></div>
+
+    <h3>История</h3>
+    <div class="history" id="history"></div>
+</div>
+
+<script>
+const API_SAVE = "/api/save";
+const API_HISTORY = "/api/history";
+
+async function saveProfit() {
+    const profit1 = parseFloat(document.getElementById('profit1').value);
+    const profit2 = parseFloat(document.getElementById('profit2').value);
+
+    if(isNaN(profit1) || isNaN(profit2)) {
+        alert("Введите корректные значения прибыли!");
+        return;
+    }
+
+    const response = await fetch(API_SAVE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player1: profit1, player2: profit2 })
+    });
+
+    if(response.ok) {
+        const data = await response.json();
+        displayResult(data.latest);
+        displayHistory(data.history);
+    } else {
+        alert("Ошибка сохранения данных");
+    }
+}
+
+function displayResult(latest) {
+    const total = latest.player1 + latest.player2;
+    document.getElementById('result').innerHTML = `
+        Игрок 1: ${latest.player1}<br>
+        Игрок 2: ${latest.player2}<br>
+        Всего: ${total}
+    `;
+}
+
+function displayHistory(history) {
+    if(history.length === 0) {
+        document.getElementById('history').innerText = "История пуста";
+        return;
+    }
+
+    let html = "<ul>";
+    history.forEach(item => {
+        html += `<li>[${item.date}] Игрок 1: ${item.player1}, Игрок 2: ${item.player2}, Всего: ${item.player1 + item.player2}</li>`;
+    });
+    html += "</ul>";
+    document.getElementById('history').innerHTML = html;
+}
+
+// Загружаем историю при загрузке страницы
+window.onload = async () => {
+    const response = await fetch(API_HISTORY);
+    if(response.ok){
+        const data = await response.json();
+        displayHistory(data.history);
+    }
+};
+</script>
+
+</body>
+</html>
