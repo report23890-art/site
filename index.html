@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Калькулятор прибыли</title>
 <link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
 </head>
 <body>
 
@@ -26,40 +25,53 @@
 </div>
 
 <script>
-  // Вставь сюда свои данные из Supabase
-  const SUPABASE_URL = 'https://tplqxyzyirptembnrtwq.supabase.co'; // твой Project URL
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwbHF4eXp5aXJwdGVtYm5ydHdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyNzUzODYsImV4cCI6MjA4MDg1MTM4Nn0.OWahq_7ZhdaGLCBJh19luYjDdVWLrrSIBzGemm13M5c';
+const NPOINT_URL = "https://api.npoint.io/3e0972ea646c4d778f85";
 
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+async function fetchHistory() {
+    const response = await fetch(NPOINT_URL);
+    const data = await response.json();
+    return data.history || [];
+}
 
-  async function displayHistory() {
-    const { data, error } = await supabase.from('profits').select('*').order('created_at', { ascending: false });
+async function updateHistory(newHistory) {
+    await fetch(NPOINT_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ history: newHistory })
+    });
+}
+
+async function displayHistory() {
     const historyDiv = document.getElementById('history');
-    if(error){ historyDiv.innerText = "Ошибка при загрузке истории"; return; }
-    if(!data.length){ historyDiv.innerText = "История пуста"; return; }
-
+    const history = await fetchHistory();
+    if (!history.length) { 
+        historyDiv.innerText = "История пуста"; 
+        return; 
+    }
     let html = "<ul>";
-    data.forEach(item => {
-      html += `<li>[${new Date(item.created_at).toLocaleString()}] Игрок1: ${item.player1}, Игрок2: ${item.player2}, Всего: ${item.player1 + item.player2}</li>`;
+    history.forEach(item => {
+        html += `<li>[${new Date(item.created_at).toLocaleString()}] Игрок1: ${item.player1}, Игрок2: ${item.player2}, Всего: ${item.player1 + item.player2}</li>`;
     });
     html += "</ul>";
     historyDiv.innerHTML = html;
-  }
+}
 
-  async function saveProfit() {
+async function saveProfit() {
     const profit1 = parseFloat(document.getElementById('profit1').value);
     const profit2 = parseFloat(document.getElementById('profit2').value);
     if(isNaN(profit1) || isNaN(profit2)){
-      alert("Введите корректные значения!");
-      return;
+        alert("Введите корректные числа!");
+        return;
     }
-
-    await supabase.from('profits').insert([{ player1: profit1, player2: profit2 }]);
+    const history = await fetchHistory();
+    const newRecord = { player1: profit1, player2: profit2, created_at: new Date().toISOString() };
+    history.push(newRecord);
+    await updateHistory(history);
     document.getElementById('result').innerHTML = `Игрок1: ${profit1}, Игрок2: ${profit2}, Всего: ${profit1+profit2}`;
     displayHistory();
-  }
+}
 
-  window.onload = displayHistory;
+window.onload = displayHistory;
 </script>
 </body>
 </html>
